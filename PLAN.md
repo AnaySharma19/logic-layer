@@ -70,7 +70,7 @@ logic-layer/
 - [ ] Create the empty folders `local-knowledge-base/facts/` and `local-knowledge-base/sources/` and seed facts 
 - [ ] Write the loader that reads all fact/source JSON files into SQLite (`logiclayer/knowledge_base/loader.py`)
 - [ ] Write the orphan-fact checker — every fact must cite a `source_id` that exists (`logiclayer/knowledge_base/loader.py`, run as a standalone check)
-- [ ] Build the embeddings index over fact text using FAISS (py library), stored under `local-knowledge-base/embeddings/` (`logiclayer/knowledge_base/embeddings.py`)
+- [ ] Build the embeddings index over fact text using "BAAI/bge-small-en-v1.5" (Hugging face & sentence-transformer) and manage them using FAISS (py library), stored under `local-knowledge-base/embeddings/` (`logiclayer/knowledge_base/embeddings.py`)
 - [ ] Write `check_local_db(claim)` — exact match first, then embeddings fallback (`logiclayer/knowledge_base/local_check.py`)
 
 ## 2. Then build the trusted-source search tool — locked to the whitelist - ranveer (communicate the trusted source list with manish)
