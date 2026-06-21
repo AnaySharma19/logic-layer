@@ -64,7 +64,7 @@ logic-layer/
 
 ---
 
-## 1. First, build the local database
+## 1. First, build the local database - manish (comunicate the trusted source list with ranveer)
 
 - [ ] Define the `Fact` and `Source` Pydantic models (`logiclayer/knowledge_base/schema.py`)
 - [ ] Create the empty folders `local-knowledge-base/facts/` and `local-knowledge-base/sources/` and seed facts 
@@ -73,7 +73,7 @@ logic-layer/
 - [ ] Build the embeddings index over fact text using FAISS (py library), stored under `local-knowledge-base/embeddings/` (`logiclayer/knowledge_base/embeddings.py`)
 - [ ] Write `check_local_db(claim)` — exact match first, then embeddings fallback (`logiclayer/knowledge_base/local_check.py`)
 
-## 2. Then build the trusted-source search tool — locked to the whitelist
+## 2. Then build the trusted-source search tool — locked to the whitelist - ranveer (communicate the trusted source list with manish)
 
 - [ ] Create `logiclayer/config/whitelisted_domains.json` with the approved domains
 - [ ] Write the scraper (requests + BeautifulSoup) (`logiclayer/trusted_sources/scraper.py`)
@@ -81,7 +81,7 @@ logic-layer/
 - [ ] Normalize results into the same JSON evidence shape as `check_local_db`'s output 
 - [ ] Cache hits back into `local-knowledge-base/facts/` as new fact entries (same file, calls into `logiclayer/knowledge_base/loader.py`)(automaticaley creating the database)
 
-## 3. Then set up Ollama and Qwen3.5 4B
+## 3. Then set up Ollama and Qwen3.5 4B - aaditya
 
 This is the part that needs its own attention — Ollama doesn't give you tool-calling for free, you write the loop yourself.
 
@@ -92,7 +92,7 @@ This is the part that needs its own attention — Ollama doesn't give you tool-c
 - [ ] Write the system prompt template — read the response, identify claims, call `check_local_db` first, only call `report_verdict` once every claim has a verdict (`logiclayer/verifier/system_prompt.py`)
 - [ ] Test `ollama_client.py` standalone with a throwaway script and 10-15 hand-written claims before wiring it into anything else — confirm Qwen actually calls the tools instead of answering from its own knowledge
 
-## 4. Then build the agent connector
+## 4. Then build the agent connector - kunal
 
 This is the "user prompt → API → generate text" half of the pipeline — the chatbot being checked, not the checker.
 
@@ -102,7 +102,7 @@ This is the "user prompt → API → generate text" half of the pipeline — the
 
 P.S. - use nvdia nim api keys for testing they are free!!
 
-## 5. Then build the orchestration loop
+## 5. Then build the orchestration loop - anay
 
 This is the file that actually ties everything above together — it's the most important file in the project.
 
@@ -112,7 +112,7 @@ This is the file that actually ties everything above together — it's the most 
 - [ ] Execute whichever tool Qwen calls by dispatching to the real function in `logiclayer/verifier/tools.py`, feed the result back into the message history, and call Ollama again — loop until `report_verdict` has been called for every claim
 - [ ] Collect all `report_verdict` calls into one structured report object (still in `orchestrator.py`)
 
-## 6. Then build the three-verdict reply
+## 6. Then build the three-verdict reply - soumya
 
 - [ ] `verified` → state the claim is correct, cite the source
 - [ ] `unverified` → say plainly nothing in the local DB or trusted sources could confirm or deny it
