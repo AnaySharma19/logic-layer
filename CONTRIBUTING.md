@@ -2,9 +2,11 @@
 
 Thanks for your interest in contributing to **Logic Layer** — a universal AI masking layer that catches hallucinations before they reach the user.
 
-This guide is written so that **even if you've never used GitHub before, you can make your first contribution today.** It covers the basic Git/GitHub workflow step by step, plus the specific rules this project follows.
+This guide is written so that **even if you've never used GitHub before — and never used `pyenv` or a Python virtual environment before — you can make your first contribution today.** It covers the basic Git/GitHub workflow step by step, the Python environment setup step by step, plus the specific rules this project follows.
 
-If you're an experienced contributor, feel free to skip Section 1 and jump straight to [Section 2](#2-getting-started).
+If you're an experienced contributor, feel free to skip Sections 1 and 1.5 and jump straight to [Section 2](#2-getting-started).
+
+also remember to update `plan.md` and `documentation.md` and add any new requiremnets into `requiremnets.txt` before commiting any changes
 
 ---
 
@@ -55,31 +57,34 @@ git checkout -b feat/your-feature-name
 ```
 (See [Section 3](#3-branch-naming-convention) below for naming rules.)
 
-**Step 5 — Make your changes.**
+**Step 5 — Set up your Python environment.**
+Before editing any Python code, set up `pyenv` and a virtual environment — see [Section 1.5](#15-new-to-pyenv-and-virtual-environments-start-here) if you've never done this, or [Section 2.3](#23-local-environment-setup) for the short version.
+
+**Step 6 — Make your changes.**
 Edit files in your code editor as needed.
 
-**Step 6 — Check what changed.**
+**Step 7 — Check what changed.**
 ```bash
 git status
 git diff
 ```
 
-**Step 7 — Stage and commit your changes.**
+**Step 8 — Stage and commit your changes.**
 ```bash
 git add .
 git commit -m "feat(verification): add contradiction-detector verdict mapping"
 ```
 (See [Section 4](#4-commit-messages) for the message format we use.)
 
-**Step 8 — Push your branch to your fork on GitHub.**
+**Step 9 — Push your branch to your fork on GitHub.**
 ```bash
 git push origin feat/your-feature-name
 ```
 
-**Step 9 — Open a Pull Request.**
+**Step 10 — Open a Pull Request.**
 Go to your fork on GitHub. You'll see a banner suggesting you open a PR for the branch you just pushed — click it, fill out the template, and submit.
 
-**Step 10 — Respond to review feedback.**
+**Step 11 — Respond to review feedback.**
 A maintainer will review your PR (see [Section 5.1](#51-review-expectations)). If they ask for changes, just make more commits on the same branch and push again — the PR updates automatically.
 
 ### 1.4 Useful things to know as a beginner
@@ -94,13 +99,84 @@ A maintainer will review your PR (see [Section 5.1](#51-review-expectations)). I
   ```
 - **Stuck or made a mess?** It's okay — open an issue or ask in your PR. Everyone's first PR is a little messy.
 
+### 1.5 New to `pyenv` and virtual environments? Start here
+
+If you've only ever had "one Python" installed on your computer and run scripts directly, this section is for you. Two ideas, explained from scratch:
+
+**What is `pyenv`, and why do we use it?**
+
+Different projects often need different Python *versions*. Your computer might come with Python 3.9, but this project needs **Python 3.12.11** specifically. `pyenv` lets you install multiple Python versions side by side and pick exactly which one a given project uses, without touching or breaking the system Python your OS relies on.
+
+**What is a virtual environment (`venv`), and why do we use it?**
+
+A virtual environment is an isolated, project-specific folder of installed Python *packages*. Without one, every Python project on your machine shares the same global pile of installed packages — install version 2 of a library for one project and you might silently break a different project that needed version 1. A `venv` gives this project its own private package folder so nothing leaks in or out.
+
+Put together: **`pyenv` picks the Python version, `venv` isolates the packages.** You use both, every time, for this project.
+
+**Step-by-step, from a totally clean machine:**
+
+1. **Install `pyenv` itself** (one-time, per computer):
+   ```bash
+   # macOS (Homebrew)
+   brew install pyenv
+
+   # Linux
+   curl https://pyenv.run | bash
+   ```
+   After installing, follow the printed instructions to add `pyenv` to your shell startup file (`.bashrc`, `.zshrc`, etc.), then restart your terminal. Confirm it worked:
+   ```bash
+   pyenv --version
+   ```
+
+2. **Install Python 3.12.11 via `pyenv`** (one-time, per computer):
+   ```bash
+   pyenv install 3.12.11
+   ```
+   This downloads and builds that exact Python version — it does **not** replace your system Python.
+
+3. **Pin this project to that version** (run from inside the `logic-layer` folder):
+   ```bash
+   cd logic-layer
+   pyenv local 3.12.11
+   ```
+   This creates a `.python-version` file in the repo. From now on, any time your terminal is inside this folder, `python` automatically means Python 3.12.11 — no need to remember to switch it manually.
+
+4. **Create the project's virtual environment** (one-time, per clone of the repo):
+   ```bash
+   python -m venv venv
+   ```
+   This creates a `venv/` folder containing an isolated copy of Python 3.12.11 and its own empty package list. It's already listed in `.gitignore`, so it never gets committed.
+
+5. **Activate the virtual environment** (every time you open a new terminal to work on this project):
+   ```bash
+   source venv/bin/activate        # macOS/Linux
+   venv\Scripts\activate           # Windows
+   ```
+   You'll know it worked because your terminal prompt will show `(venv)` at the start of the line. From here on, `pip install` and `python` only affect this isolated environment.
+
+6. **Install the project's dependencies** (after activating):
+   ```bash
+   pip install -r middleware/requirements.txt
+   ```
+
+7. **When you're done working, deactivate** (optional, just exits the isolated environment):
+   ```bash
+   deactivate
+   ```
+
+**Common beginner mistakes to avoid:**
+
+- Forgetting to `activate` the `venv` before running `pip install` — you'll end up installing packages globally instead, which is exactly what `venv` exists to prevent.
+- Running `pyenv local 3.12.11` somewhere outside the `logic-layer` folder — it only pins the version for the folder (and subfolders) you ran it in.
+- Committing the `venv/` folder to Git — don't; it's already gitignored, and it shouldn't ever be tracked.
+
 ---
 
 ## 2. Getting Started
 
 ### 2.1 Prerequisites
 
-- **Python** ≥ 3.11 (for the FastAPI middleware, claim extraction, verification layers)
+- **Python 3.12.11**, managed via `pyenv` (see [Section 1.5](#15-new-to-pyenv-and-virtual-environments-start-here) if this is new to you) — used for the FastAPI middleware, claim extraction, verification layers
 - **Node.js** ≥ 18 LTS (for the UI client — browser extension + web dashboard)
 - **PostgreSQL** ≥ 14 (for verdict history, metadata, logs)
 - **Docker** + Docker Compose (for the local dev environment)
@@ -120,7 +196,11 @@ cd logic-layer
 # Copy the env template and fill in real values
 cp .env.example .env
 
-# Python virtualenv for the middleware
+# Pin the Python version with pyenv (writes .python-version)
+pyenv install 3.12.11   # skip if you already have it installed
+pyenv local 3.12.11
+
+# Create and activate a virtual environment for the middleware
 python -m venv venv
 source venv/bin/activate     # (Windows: venv\Scripts\activate)
 pip install -r middleware/requirements.txt
@@ -130,6 +210,8 @@ cd ui-client
 npm install
 cd ..
 ```
+
+If any of the `pyenv`/`venv` steps above are unfamiliar, walk through [Section 1.5](#15-new-to-pyenv-and-virtual-environments-start-here) first — it explains each command before you run it.
 
 #### What is `.env.example` for?
 
@@ -149,7 +231,7 @@ docker compose up --build       # postgres + middleware + ui-client
 For running pieces individually during development:
 
 ```bash
-# Middleware (FastAPI with hot reload)
+# Middleware (FastAPI with hot reload) — make sure venv is activated first
 cd middleware
 uvicorn api.main:app --reload --port 8000
 
@@ -208,7 +290,7 @@ Allowed types: `feat`, `fix`, `chore`, `docs`, `test`, `refactor`, `perf`, `ci`.
 1. **Branch off `develop`** for normal work, off `main` only for hotfixes.
 2. **Keep PRs focused** — one logical change per PR. If a fix and a refactor are entangled, split them.
 3. **Write or update tests** for any behavior change. PRs without tests will be asked to add them.
-4. **Run the full local check before pushing:**
+4. **Run the full local check before pushing** (with your `venv` activated):
    ```bash
    make lint
    make test
@@ -234,6 +316,7 @@ Allowed types: `feat`, `fix`, `chore`, `docs`, `test`, `refactor`, `perf`, `ci`.
 - **Docstrings** (Google style) on every module and public function.
 - No print statements in production code — use the `logging` module.
 - Tests with `pytest`. Aim for ≥ 80% line coverage on touched modules.
+- All of the above assumes you're working inside the project's `venv` on Python 3.12.11 (pinned via `pyenv`) — see [Section 1.5](#15-new-to-pyenv-and-virtual-environments-start-here).
 
 ### 6.2 JavaScript / TypeScript (UI client)
 
@@ -284,6 +367,4 @@ By participating in this project you agree to keep discussions respectful, const
 
 ## 11. Questions?
 
-If something in this guide is unclear, open a PR against this file — documentation is part of the project. If you're brand new and just stuck on a Git command, that's a great thing to ask about in your PR or in an issue — no question is too basic.
-
-Thanks for contributing. 🎯
+If something in this guide is unclear, open a PR against this file — documentation is part of the project. If you're brand new and just stuck on a Git command, or stuck on a `pyenv`/`venv` step, that's a great thing to ask about in your PR or in an issue — no question is too basic.

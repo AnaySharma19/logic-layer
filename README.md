@@ -97,6 +97,7 @@ It's the fastest and cheapest layer — no model call, no web request — so it 
 
 | Layer | Technology |
 |---|---|
+| Language / runtime | **Python 3.12.11**, pinned via `pyenv local 3.12.11`, isolated in a project `venv` |
 | Verifier model | Qwen3.5 4B, served locally via **Ollama** |
 | CLI | Python, **Typer** |
 | Agent connectors | REST/HTTP adapters per target AI agent's API |
@@ -138,6 +139,24 @@ logic-layer/
 See [`build-plan.md`](./logic-layer-build-plan.md) for the file-by-file build order.
 
 ## 7. Getting Started
+
+### 7.1 Environment Setup
+
+This project targets **Python 3.12.11**. Pin and isolate it before installing anything:
+
+```bash
+# 1. Pin the project's Python version with pyenv
+pyenv install 3.12.11   # skip if already installed
+pyenv local 3.12.11     # writes .python-version in the repo root
+
+# 2. Create and activate a virtual environment using that pinned version
+python -m venv venv
+source venv/bin/activate    # on Windows: venv\Scripts\activate
+```
+
+All commands below assume this venv is active.
+
+### 7.2 Install and Run
 
 ```bash
 # 1. Install and run Ollama, then pull the verifier model
