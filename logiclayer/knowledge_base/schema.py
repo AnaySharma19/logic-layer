@@ -1,17 +1,17 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+
 
 class Source(BaseModel):
-    source_id: str = Field(..., description="Unique identifier for the source")
+    source_id: str = Field(..., description="Unique string identifier for the source (e.g., src_001)")
     name: str = Field(..., description="The title of the source document or website")
-    url: Optional[str] = Field(None, description="The web link to the source, if applicable")
-    domain: Optional[str] = Field(None, description="The domain name")
-    category: Optional[str] = Field(None, description="The category designation")
-    retrieved_at: Optional[str] = Field(None, description="When the data was fetched")
+    url: str = Field(..., description="The direct URL link to the verified source")
+    domain: str = Field(..., description="The bare domain this source lives on (e.g., python.org) -- used by trusted_sources whitelist matching")
+    category: str = Field(..., description="Topic category this source belongs to (e.g., science_general, health_medicine)")
+    retrieved_at: str = Field(..., description="Date this source was checked/scraped, ISO format YYYY-MM-DD")
+
 
 class Fact(BaseModel):
-    # Updated keys to match your fact files exactly!
-    fact_id: str = Field(..., description="Unique identifier for the fact")
-    claim: str = Field(..., description="The claim statement text")
-    value: str = Field(..., description="The factual description or detail value")
-    source_id: str = Field(..., description="The ID of the Source this fact belongs to.")
+    fact_id: str = Field(..., description="Unique string identifier for the fact (e.g., fact_001)")
+    claim: str = Field(..., description="The clean textual assertion used for semantic embedding search")
+    value: str = Field(..., description="The detailed background truth data or context metrics")
+    source_id: str = Field(..., description="The associated source ID tracking back to the source model")

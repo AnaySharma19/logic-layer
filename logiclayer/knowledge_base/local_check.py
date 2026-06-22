@@ -2,115 +2,113 @@ import sqlite3
 import numpy as np
 import faiss
 from pathlib import Path
-from logiclayer.knowledge_base.embeddings import generate_simple_embedding
+from sentence_transformers import SentenceTransformer
 
-# Setup paths relative to the project root
 DB_PATH = Path("local-knowledge-base/knowledge_base.db")
 INDEX_PATH = Path("local-knowledge-base/embeddings/faiss_index.bin")
 MAP_PATH = Path("local-knowledge-base/embeddings/fact_mapping.txt")
 
+# Similarity score requirement (BGE IndexFlatIP returns Cosine Similarity: 1.0 = identical, 0.0 = orthogonal)
+MIN_SIMILARITY_THRESHOLD = 0.75
+
+MODEL_NAME = "BAAI/bge-small-en-v1.5"
+
+_model = None  # lazy-loaded -- an exact match shouldn't have to pay for a model load
+
+
+def get_model() -> SentenceTransformer:
+    global _model
+    if _model is None:
+        print("🧠 Loading BGE model for query analysis...")
+        _model = SentenceTransformer(MODEL_NAME)
+    return _model
+
+
 def check_local_db(claim: str):
-    """
-    Checks the local database for a claim.
-    1. Tries an exact text match against the SQLite database first.
-    2. Falls back to FAISS semantic vector search if no exact match is found.
-    """
+    """Checks SQLite for exact match first, then falls back to BGE+FAISS
+    semantic search with safety bounds. Always returns either None or a
+    4-tuple: (fact_id, claim, value, source_name) -- both paths now return
+    the same shape, so callers don't need to know which path matched."""
     print(f"\n🧐 Running verification pipeline for claim: '{claim}'")
-    
-    # Ensure database file exists
+
     if not DB_PATH.exists():
-        print("❌ Error: Database file missing. Run loader.py first.")
+        print("❌ Error: Database file missing.")
         return None
 
-    # ==========================================
-    # STRATEGY 1: EXACT TEXT MATCH (SQLite)
-    # ==========================================
-    print("⚡ Step 1: Checking for exact text match in SQLite...")
+    # STRATEGY 1: EXACT MATCH
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
     cursor.execute("""
         SELECT f.fact_id, f.claim, f.value, s.name 
         FROM facts f
         JOIN sources s ON f.source_id = s.source_id
         WHERE LOWER(f.claim) = LOWER(?)
     """, (claim.strip(),))
-    
     exact_match = cursor.fetchone()
-    
+    conn.close()
+
     if exact_match:
-        fact_id, matched_claim, value, source_name = exact_match
-        print("🎯 Found an EXACT match in the database!")
-        print("=" * 60)
-        print(f"🆔 FACT ID      : {fact_id}")
-        print(f"📝 CLAIM        : {matched_claim}")
-        print(f"💡 DETAIL VALUE : {value}")
-        print(f"📚 SOURCE       : {source_name}")
-        print("=" * 60)
-        conn.close()
+        print("🎯 Found an EXACT match in SQLite!")
         return exact_match
 
-    # ==========================================
-    # STRATEGY 2: SEMANTIC FALLBACK (FAISS)
-    # ==========================================
-    print("🔄 No exact match found. Falling back to Step 2: FAISS Semantic Search...")
-    conn.close() # Close connection while processing vectors
-    
+    # STRATEGY 2: SEMANTIC FALLBACK WITH SAFETY GUARDS
     if not INDEX_PATH.exists() or not MAP_PATH.exists():
-        print("⚠️ Semantic lookup failed: FAISS index or mappings missing. Run embeddings.py!")
+        print("⚠️ Semantic lookup skipped: Vector index files missing.")
         return None
-        
-    # Generate vector matrix for user input
-    query_vector = generate_simple_embedding(claim).reshape(1, -1)
-    
-    # Read FAISS layers
+
     index = faiss.read_index(str(INDEX_PATH))
-    distances, indices = index.search(query_vector, 1) # Get the closest neighbor
-    
-    # Load sequential ID mappings list
     with open(MAP_PATH, "r", encoding="utf-8") as f:
         fact_id_mapping = [line.strip() for line in f.readlines()]
-        
+
+    # Guardrail 1: Sync Validation
+    if index.ntotal != len(fact_id_mapping):
+        raise RuntimeError("❌ Critical Error: FAISS index and mapping file are out of sync.")
+
+    model = get_model()
+    query_vector = model.encode([claim], normalize_embeddings=True).astype('float32')
+    similarities, indices = index.search(query_vector, 1)
+
     match_index = indices[0][0]
-    distance_score = float(distances[0][0])
-    
-    if match_index < 0 or match_index >= len(fact_id_mapping):
-        print("❌ Semantic lookup: No vector matches found.")
+    similarity_score = float(similarities[0][0])
+
+    # Guardrail 2: Handle empty index / invalid fallback markers
+    if match_index == -1 or match_index < 0 or match_index >= len(fact_id_mapping):
+        print("⚠️ Semantic search: No valid vector matches found in the index.")
         return None
-        
+
+    # Guardrail 3: Quality Threshold Filter
+    if similarity_score < MIN_SIMILARITY_THRESHOLD:
+        print(f"🛑 Match found ({similarity_score:.4f}), but fell short of the minimum safety threshold ({MIN_SIMILARITY_THRESHOLD}). Treating as unverified.")
+        return None
+
     matched_fact_id = fact_id_mapping[match_index]
-    
-    # Pull the semantic match info from SQLite
+
+    # NOTE: fact_id is now included here too, so this path returns the
+    # same 4-column shape as the exact-match path above.
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT f.claim, f.value, s.name 
+        SELECT f.fact_id, f.claim, f.value, s.name 
         FROM facts f
         JOIN sources s ON f.source_id = s.source_id
         WHERE f.fact_id = ?
     """, (matched_fact_id,))
-    
     semantic_match = cursor.fetchone()
     conn.close()
-    
+
     if semantic_match:
-        matched_claim, value, source_name = semantic_match
-        print("🤖 Found a SEMANTIC match via vector neighborhood layers!")
-        print("=" * 60)
-        print(f"🆔 FACT ID      : {matched_fact_id}")
-        print(f"📝 CLOSEST CLAIM: {matched_claim}")
-        print(f"💡 DETAIL VALUE : {value}")
-        print(f"📚 SOURCE       : {source_name}")
-        print(f"📊 DISTANCE SCORE: {distance_score:.4f}")
-        print("=" * 60)
+        print("🤖 Found a safe SEMANTIC match via guardrailed vector lookups!")
+        print(f"📊 SCORE: {similarity_score:.4f}")
         return semantic_match
-    else:
-        print("❌ Vector entry exists, but corresponding row was missing from SQLite tables.")
-        return None
+    return None
+
 
 if __name__ == "__main__":
-    # Test 1: Test with an exact string match
-    check_local_db("Python was created by Guido van Rossum")
-    
-    # Test 2: Test semantic fallback (using different words for the same idea)
-    check_local_db("Who designed the python programming language")
+    test_claims = [
+        "Python was created by Guido van Rossum",       # should be an exact match
+        "Who designed the python programming language",  # should be a semantic match, NOT the UN fact
+        "The moon is made of cheese",                     # should find nothing
+    ]
+    for claim in test_claims:
+        result = check_local_db(claim)
+        print(f"  -> Result: {result}")
