@@ -114,9 +114,9 @@ This is the file that actually ties everything above together — it's the most 
 
 ## 6. Then build the three-verdict reply - soumya
 
-- [ ] `verified` → state the claim is correct, cite the source
-- [ ] `unverified` → say plainly nothing in the local DB or trusted sources could confirm or deny it
-- [ ] `wrong` → show the original statement and Qwen's corrected version side by side, cite the source
+- [x] `verified` → state the claim is correct, cite the source
+- [x] `unverified` → say plainly nothing in the local DB or trusted sources could confirm or deny it
+- [x] `wrong` → show the original statement and Qwen's corrected version side by side, cite the source
 - [ ] All three cases formatted in `logiclayer/reporting/formatter.py`, called from `orchestrator.py` right after step 5 finishes
 
 ## 7. Then build the CLI
