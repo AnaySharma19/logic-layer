@@ -1,0 +1,40 @@
+# CODEOWNERS — auto-requests review from the owners of each area of the codebase.
+# One per line: pattern<space>GitHub-handle(s). The last match wins.
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner — falls back if no more specific rule applies.
+*    @Aariso0
+
+# Repo hygiene & docs
+/.github/             @Aariso0
+/README.md            @Aariso0
+/PLAN.md              @Aariso0
+/CONTRIBUTING.md      @Aariso0
+/LICENSE              @Aariso0
+
+# Middleware & orchestration
+/middleware/api/                  @Aariso0
+/middleware/feedback_loop/        @Aariso0
+/middleware/config/               @Aariso0
+
+# Verification systems
+/middleware/claim_extraction/                 @Aariso0
+/middleware/verification/local_check/        @Aariso0
+/middleware/verification/trusted_source_check/ @Aariso0
+/middleware/verification/contradiction_detector/ @Aariso0
+
+    # Local knowledge base
+/local-knowledge-base/                       @Aariso0
+
+# Universal UI client
+/ui-client/browser-extension/   @Aariso0
+/ui-client/web-dashboard/       @Aariso0
+
+# Scripts & scheduling
+/scripts/                       @Aariso0
+
+# CI/CD
+/.github/workflows/             @Aariso0
+
+# Tests mirror ownership of the code they exercise
+/tests/                         @Aariso0

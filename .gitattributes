@@ -1,0 +1,74 @@
+# ─────────────────────────────────────────────────────────────
+# Logic Layer — .gitattributes
+# Normalize line endings across OSes and mark large binaries
+# (model weights, vector indexes) for Git LFS so they don't
+# bloat the repo.
+# ─────────────────────────────────────────────────────────────
+
+# Auto-detect text files and normalize line endings to LF on commit.
+*               text=auto eol=lf
+
+# Shell scripts — keep LF (don't let Windows rewrite to CRLF).
+*.sh            text eol=lf
+
+# Windows-specific scripts — keep CRLF.
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+*.ps1           text eol=crlf
+
+# Python — keep LF.
+*.py            text eol=lf
+*.pyi           text eol=lf
+
+# JS / TS / web — keep LF.
+*.js            text eol=lf
+*.jsx           text eol=lf
+*.ts            text eol=lf
+*.tsx           text eol=lf
+*.json          text eol=lf
+*.css           text eol=lf
+*.html          text eol=lf
+*.md            text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.toml          text eol=lf
+
+# Markdown — diff nicely even when contributors use mixed tools.
+*.md            diff=markdown
+
+# Binary blobs — do not try to diff/merge.
+*.db            binary
+*.sqlite        binary
+*.sqlite3       binary
+*.faiss         binary
+*.index         binary
+*.bin           binary
+*.pkl           binary
+*.onnx          binary
+*.pt            binary
+*.pth           binary
+*.h5            binary
+*.hdf5          binary
+*.safetensors   binary
+*.gguf          binary
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.pdf           binary
+*.zip           binary
+*.tar           binary
+*.tar.gz        binary
+*.tgz           binary
+*.7z            binary
+
+# Large binaries — track with Git LFS instead of bloating the repo.
+# (Run `git lfs install` once per machine.)
+*.pt            filter=lfs diff=lfs merge=lfs -text
+*.pth           filter=lfs diff=lfs merge=lfs -text
+*.onnx          filter=lfs diff=lfs merge=lfs -text
+*.safetensors   filter=lfs diff=lfs merge=lfs -text
+*.gguf          filter=lfs diff=lfs merge=lfs -text
+*.h5            filter=lfs diff=lfs merge=lfs -text
+*.hdf5          filter=lfs diff=lfs merge=lfs -text

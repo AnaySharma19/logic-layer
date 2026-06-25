@@ -1,0 +1,108 @@
+# ─────────────────────────────────────────────────────────────
+# Logic Layer — .gitignore
+# Keep secrets, build artifacts, regenerable indexes, and local
+# DB dumps out of version control. Anything you can rebuild from
+# committed source should NOT be in the repo.
+# ─────────────────────────────────────────────────────────────
+
+# ── Environments & secrets (NEVER commit) ──
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+.env.bak
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# ── Node / UI client ──
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+out/
+coverage/
+*.tsbuildinfo
+
+# ── Local knowledge base artifacts (regenerable) ──
+local-knowledge-base/embeddings/*.index
+local-knowledge-base/embeddings/*.faiss
+local-knowledge-base/embeddings/*.bin
+local-knowledge-base/embeddings/*.pkl
+
+# ── Vector store / DB files ──
+*.db
+*.sqlite
+*.sqlite3
+chroma/
+chroma_data/
+.faiss/
+vector_store/
+
+# ── Model weights (large binaries — use Git LFS or external storage) ──
+*.pt
+*.pth
+*.onnx
+*.h5
+*.hdf5
+*.safetensors
+models/
+checkpoints/
+*.gguf
+
+# ── Logs ──
+*.log
+logs/
+*.pid
+
+# ── Docker / Compose overrides ──
+docker-compose.override.yml
+
+# ── OS / editor clutter ──
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+*~
+
+# ── Jupyter ──
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Temporary / scratch ──
+tmp/
+temp/
+*.bak
+*.orig
+
+ignore/

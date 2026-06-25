@@ -1,0 +1,138 @@
+# ─────────────────────────────────────────────────────────────
+# Logic Layer — Release workflow
+#
+# Triggered on tags matching `vMAJOR.MINOR.PATCH`. Builds the
+# middleware + UI-client Docker images, publishes them to the
+# container registry, and drafts a GitHub release with an
+# auto-generated changelog.
+#
+# NOTE: Per README §6 this is added "once we're past the pilot."
+# It is wired up now but left intentionally light so it can be
+# enabled by removing the `if` guards when the team is ready.
+# ─────────────────────────────────────────────────────────────
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:        # allow manual trigger from the Actions tab
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ───────────────────────────────────────────────────────────
+  # 1. Build & push middleware image
+  # ───────────────────────────────────────────────────────────
+  middleware-image:
+    name: Build & push middleware image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/middleware
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: middleware
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ───────────────────────────────────────────────────────────
+  # 2. Build & push UI-client image
+  # ───────────────────────────────────────────────────────────
+  ui-client-image:
+    name: Build & push UI client image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/ui-client
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ui-client
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ───────────────────────────────────────────────────────────
+  # 3. Draft GitHub release with auto-changelog
+  # ───────────────────────────────────────────────────────────
+  release:
+    name: GitHub Release
+    needs: [middleware-image, ui-client-image]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Conventional Commits → grouped changelog. We keep it simple here;
+          # a full conventional-changelog setup is added in a follow-up.
+          echo "CHANGELOG<<EOF" >> "$GITHUB_OUTPUT"
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> "$GITHUB_OUTPUT" || true
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            ## What's changed
+
+            ${{ steps.changelog.outputs.CHANGELOG }}
+
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.sha }}
+          draft: true
+          generate_release_notes: true

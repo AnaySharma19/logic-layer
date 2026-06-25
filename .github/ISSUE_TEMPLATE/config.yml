@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/<org>/logic-layer#readme
+    about: Start here for an overview of what Logic Layer does and how it's organized.
+  - name: Discussions
+    url: https://github.com/<org>/logic-layer/discussions
+    about: Open-ended questions, ideas, and design discussions.
+  - name: Security issues
+    url: mailto:security@<org>.example
+    about: Please do NOT report security issues in public. Email us instead.
