@@ -23,7 +23,7 @@ try:
     # 2. Importing real ollama client.py
     from logiclayer.verifier.ollama_client import call_ollama 
     
-    #Aaditya focus that I have mentioned call_ollama change it according to your setup
+    #Aaditya focus that I have mentioned call_ollama we will discuss it according to your setup
 
 except ImportError:
     logger.critical("ollama_client.py could not be found! Registering safety mock fallback.")
