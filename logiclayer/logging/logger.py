@@ -1,11 +1,14 @@
 #Log Infrastructure and seperate code with Log management
 
-
 import os
 import json
 import sqlite3
-from datetime import datetime
+import logging
+from datetime import datetime, timezone
 from typing import Any, Dict
+
+# Setup the logger 
+logger = logging.getLogger(__name__)
 
 # Define paths relative to this project setup
 DB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "local-knowledge-base"))
@@ -14,14 +17,11 @@ JSON_LOG_PATH = os.path.join(DB_DIR, "pipeline_logs.jsonl")
 
 def is_connected(conn) :
     """Check if SQLite3 is connected, it is active and valid returns False otherwise"""
-
     try:
         conn.execute("SELECT 1;")
         return True
-    
     except (sqlite3.ProgrammingError, sqlite3.OperationalError, sqlite3.Error):
         return False
-
     except AttributeError:
         return False
 
@@ -32,20 +32,15 @@ def init_logger():
     # Create local storage directory if missing
     os.makedirs(DB_DIR, exist_ok=True)
     
-    # Initialize SQLite schema with failure management
-    sqlite3.Connection.is_connected = is_connected
     try:
         connector = sqlite3.connect(DB_PATH)
-
-        if connector.is_connected():
-            logging.info("SQLite3 database connection established successfully")
-            
+        if is_connected(connector):
+            logger.info("SQLite3 database connection established successfully")
         else:
-            logging.error("SQLite3 connection failed after opening")
-
+            logger.error("SQLite3 connection failed after opening")
     except sqlite3.Error as e:
-        logging.critical(f"failed to open database file : {e}")
-
+        logger.critical(f"failed to open database file : {e}")
+        return
 
     cursor = connector.cursor()
     
@@ -78,7 +73,7 @@ init_logger()
 
 def log_query(query_text: str):
     """Logs the entry point raw text query into both SQLite and JSONL formats."""
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(timezone.utc).isoformat()
     
     # 1. SQLite Write
     try:
@@ -108,7 +103,8 @@ def log_query(query_text: str):
 
 def log_tool_call(tool_name: str, arguments: Dict[str, Any], result: str):
     """Logs the inner step model tool selections into both SQLite and JSONL formats."""
-    timestamp = datetime.utcnow().isoformat()
+    # CHANGED: Swapped deprecated datetime.utcnow() for timezone-aware utc implementation
+    timestamp = datetime.now(timezone.utc).isoformat()
     args_json = json.dumps(arguments)
     
     # 1. SQLite Write
