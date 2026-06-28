@@ -20,8 +20,8 @@ from typing import Any, Dict, List, Optional
 # Setup the logger 
 logger = logging.getLogger(__name__)
 
-Max_try = 3 #number of tries to import any file
-for attempt in range(1, Max_try+1):
+MAX_TRY = 3 #number of tries to import any file
+for attempt in range(1, MAX_TRY+1):
     try:
         # 2. Importing real ollama client.py
         #Aaditya focus that I have mentioned call_ollama we will discuss it according to your setup
@@ -30,15 +30,15 @@ for attempt in range(1, Max_try+1):
         break
         
     except ImportError as e:
-        logger.error(f"Attempt {attempt}/{Max_try} : ollama_client.py could not be found!")
-        if attempt == Max_try:
+        logger.error(f"Attempt {attempt}/{MAX_TRY} : ollama_client.py could not be found!")
+        if attempt == MAX_TRY:
             logger.critical("Maximum attempts reached. Crashing application safely!!")
             raise e
 
         importlib.invalid_caches()
         await asyncio.sleep(0.05)
         
-for attempt in range(1, Max_try+1):
+for attempt in range(1, MAX_TRY+1):
     try:
         # 4. Importing functions from logiclayer/verifier/tools.py
         #Announcement folks here I have named  check_local_db, search_trusted_sources, report_verdict from the tools.py
@@ -47,15 +47,15 @@ for attempt in range(1, Max_try+1):
         break
 
     except ImportError as e:
-        logger.error(f"Attempt {attempt}/{Max_try} : tools.py module file missing! Initializing fallback.")
-        if attempt == Max_try:
+        logger.error(f"Attempt {attempt}/{MAX_TRY} : tools.py module file missing! Initializing fallback.")
+        if attempt == MAX_TRY:
             logger.critical("Maximum attempts reached. Crashing application safely!!")
             raise e
 
         importlib.invalid_caches()
         await asyncio.sleep(0.05)
 
-for attempt in range(1, Max_try+1):
+for attempt in range(1, MAX_TRY+1):
     try:
         # Integration with the logger module created
         from logiclayer.logging.logger import log_query, log_tool_call
@@ -64,14 +64,14 @@ for attempt in range(1, Max_try+1):
 
     except ImportError as e:
         logger.warning("logging/logger.py missing.")
-        if attempt == Max_try:
+        if attempt == MAX_TRY:
             logger.critical("Maximum attempts reached. Crashing application safely!!")
             raise e
 
         importlib.invalid_caches()
         await asyncio.sleep(0.05)
 
-for attempt in range(1, Max_try+1):
+for attempt in range(1, MAX_TRY+1):
     try:
         #importing connector as per Kunal's code
         from logiclayer.connectors.nvidia_connector import NvidiaConnector
@@ -79,15 +79,15 @@ for attempt in range(1, Max_try+1):
         break
 
     except ImportError as e:
-        logger.error(f"Attempt {attempt}/{Max_try} : nvidia_connector file missing! Initializing fallback.")
-        if attempt == Max_try:
+        logger.error(f"Attempt {attempt}/{MAX_TRY} : nvidia_connector file missing! Initializing fallback.")
+        if attempt == MAX_TRY:
             logger.critical("Maximum attempts reached. Crashing application safely!!")
             raise e
 
         importlib.invalid_caches()
         await asyncio.sleep(0.05)
 
-for attempt in range(1, Max_try+1):
+for attempt in range(1, MAX_TRY+1):
     try:
         #importing system_prompt as per plan.md
         from logiclayer.verifier.system_prompt import sys_prompt
@@ -95,8 +95,8 @@ for attempt in range(1, Max_try+1):
         break
 
     except ImportError as e:
-        logger.error(f"Attempt {attempt}/{Max_try} : system_prompt file missing! Initializing fallback.")
-        if attempt == Max_try:
+        logger.error(f"Attempt {attempt}/{MAX_TRY} : system_prompt file missing! Initializing fallback.")
+        if attempt == MAX_TRY:
             logger.critical("Maximum attempts reached. Crashing application safely!!")
             raise e
 
@@ -107,12 +107,6 @@ for attempt in range(1, Max_try+1):
 # ==============================================================================
 #ORCHESTRATION ENGINE
 # ==============================================================================
-
-except ImportError:
-    logger.critical("tools.py module file missing! Initializing fallback.")
-    async def check_local_db(claim: str) -> list: return []
-    async def search_trusted_sources(claim: str) -> str: return "Web proof baseline."
-    async def report_verdict(verdict_data: dict) -> str: return "Logged."
 
 try:
     # Integration with the logger module created
@@ -141,10 +135,13 @@ class OrchestrationEngine:
         
         # 5. Master container report payload with structured report object
         report_payload = {
-            "status": "failed",
+            "claim": str|None,
             "execution_latency_seconds": 0.0,
             "verdicts": [],
-            "error_log": None
+            "evidence" : str|None,
+            "source_url" : str|None,
+            "correection" : str|None,
+            "tier_used" : str|None
         }
 
         try:
@@ -170,157 +167,124 @@ class OrchestrationEngine:
                 logger.error("Failed to send system_promptr")
 
             #Since we have received the modified response from ollama sonow we will go for the tools implementation
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            # 2. Only the 'check_local_db' + 'report_verdict' tools enabled at first
-            enabled_tools = ["check_local_db", "report_verdict"]
+            #we will go for parallel execution of claim verification
             
-            loop_active = True
-            max_turns = 4 # Safety brake preventing infinite loops 
-            turn = 0
+            BATCH_SIZE = 30
+            MAX_CONCURRENT_PER_BATCH = 10
+            IO_TIMEOUT_SECONDS = 1.0
+            async def process_single claim(claim_args : Dict[str, Any], gate : asyncio.Semaphore) -> Dict[str, Any] :
+                claim_text = claim_args.get("claim", "")
+                claim_record = {
+                    "claim": claim_text,
+                    "verdicts": "unverified",
+                    "evidence" : None,
+                    "source_url" : None,
+                    "correection" : None,
+                    "tier_used" : None
+                }
 
-            # 4. Loop until 'report_verdict' has been called for every claim
-            while loop_active and turn < max_turns:
-                turn += 1
-                
-                try:
-                    model_output = await call_ollama(messages, tools=enabled_tools)
-
-                except Exception as llm_err:
-                    logger.error(f"Ollama remote network transaction failed on turn {turn}: {llm_err}")
-                    report_payload["error_log"] = f"LLM client interface failure: {llm_err}"
-                    break
-
-                tool_calls = model_output.get("tool_calls", [])
-                
-                if not tool_calls:
-                    messages.append({"role": "assistant", "content": model_output.get("content", "")})
-                    break 
-
-                # 4. Handle tool execution choices 
-                for tool in tool_calls:
-                    tool_name = tool.get("name")
-                    tool_args = tool.get("arguments", {})
-                    tool_result_str = ""
-                    
+    
+                async with gate:
                     try:
-                        if tool_name == "check_local_db":
-                            db_results = await check_local_db(tool_args.get("claim"))
-                            tool_result_str = str(db_results)
-                            
-                            # 3. Gating Logic: When check_local_db comes back empty, **"only then"** add search_trusted_sources
-                            if not db_results and "search_trusted_sources" not in enabled_tools:
-                                enabled_tools.append("search_trusted_sources")
-                                logger.info("Gating criterion achieved: search_trusted_sources exposed to agent.")
+                        # Step 1: Check Local DB Gate
+                        async with asyncio.timeout(IO_TIMEOUT_SECONDS):
+                            db_results = await check_local_db(claim_text)
+            
+                        if db_results:
+                            #Local DB returns a dict containing evaluating elements
+                            claim_record["verdict"] = db_results.get("verdict", "verified") # e.g., verified / wrong / unverified
+                            claim_record["evidence"] = db_results.get("evidence", "Match found in local database logs.")
+                            claim_record["source_url"] = db_results.get("source_url", "local_db://cache")
+                            claim_record["correction"] = db_results.get("correction", None)
+                            claim_record["tier_used"] = "local_db"
+                
+                        else:
+                            # Step 2: Fallback to External Trusted Source Gate
+                            async with asyncio.timeout(IO_TIMEOUT_SECONDS):
+                                web_results = await search_trusted_sources(claim_text)
+                
+                            if web_results:
+                                claim_record["verdict"] = web_results.get("verdict", "verified")
+                                claim_record["evidence"] = web_results.get("evidence", None)
+                                claim_record["source_url"] = web_results.get("source_url", None)
+                                claim_record["correction"] = web_results.get("correction", None)
+                                claim_record["tier_used"] = "trusted_source_search"
 
-                        elif tool_name == "search_trusted_sources":
-                            web_results = await search_trusted_sources(tool_args.get("claim"))
-                            tool_result_str = str(web_results)
+                    
+                        # Step 3: Call reporting framework tool tool to sync status live
+                        await report_verdict(claim_record)
+                        return claim_record
 
-                        elif tool_name == "report_verdict":
-                            await report_verdict(tool_args)
-                            tool_result_str = "Logged."
-                            
-                            # 5. Collect all 'report_verdict' calls into one structured report object
-                            report_payload["verdicts"].append(tool_args)
-                            
-                            # Switch loop indicator off as validation completed
-                            loop_active = False
+                    except TimeoutError:
+                        logger.error(f"Timeout hit during verification for: {claim_text[:40]}...")
+                        claim_record["verdict"] = "unverified"
+                        claim_record["evidence"] = "Verification pipeline timed out."
+                        claim_record["tier_used"] = "timeout_failure"
+                        await report_verdict(claim_record)
+                        return claim_record
+            
+                    except Exception as worker_err:
+                        logger.error(f"Unexpected worker failure: {str(worker_err)}", exc_info=True)
+                        claim_record["verdict"] = "unverified"
+                        claim_record["evidence"] = f"Runtime Crash: {type(worker_err).__name__}"
+                        claim_record["tier_used"] = "system_error"
+                        await report_verdict(claim_record)
+                        return claim_record
 
-                        # 4. Feed the valid result back into the message history
-                        messages.append({"role": "tool", "name": tool_name, "content": tool_result_str})
-                        log_tool_call(session_id, tool_name, tool_args, tool_result_str)
+            try:
+                # 1. Extract Claims from System response
+                claims_list = []
 
-                    except Exception as tool_runtime_err:
-                        
-                        #Failure Containment: If a tool crashes, log it but let the orchestration loop continue
-                        
-                        error_msg = f"Runtime Crash Exception inside tool '{tool_name}': {tool_runtime_err}"
-                        logger.error(error_msg)
-                        messages.append({"role": "tool", "name": tool_name, "content": error_msg})
-                        log_tool_call(session_id, tool_name, tool_args, error_msg)
+                if isinstance(system_prompt_response, str) :
+                    #if its a raw block of text seperated by newlines or list tags
+                    claims_list = [
+                        line.strip("- *123456780. ").strip()
+                        for line in system_prompt_response.split("\n")
+                        if line.strip() and len(line.strip()) > 5
+                    ]
+            elif isinstance(system_prompt_response, dict) :
+                #if its structured json containing a direct key
+                claims_list = system_prompt_response.get("claims", [])
+            
+            elif isinstance(system_prompt_response, list):
+                #if its already an array of string objects
+                claims_list = system_prompt_response
 
+            total_claims_count = len(claims_list)
 
+            if total_c;aims_count == 0:
+                logger.warning("No evaluable claim targets parased inside response payload string.")
+                report_payload["tier_used"] = "no_claims_extracted"
 
+            else:
+                logger.info(f"Preparing batch grid processing loop for {total_claims_count} extracted claims...")
+                concurrency_gate = asyncio.Semaphore(MAX_CONCURRENT_PER_BATCH)
 
+                #Execute batches of 30 until empty
+                for i in range(0, total_claims_count, BATCH_SIZE) :
+                    current_batch_chunk = claims_list[i : i + BATCH_SIZE]
+                    batch_num = (i//BATCH_SIZE) + 1
 
+                    logger.info(f"Processing Batch Sequence #{batch_num} ({len(current_batch_chunk)} claims)...")
 
+                    batch_tasks = [
+                        process_single_claim(claim_text, concurrency_gate)
+                        for claim_text in current_batch_chunk
+                    ]
 
+                    #Blocks here until all 30 elements in the active batch
+                    batch_results = await asyncio.gather(*batch_tasks)
+                    report_payload["verdicts"].extend(batch_results)
 
+                logger.info("All parallel allocation batches processed successfully.")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            # Define processing completion indicators
-            report_payload["status"] = "success" if not report_payload["error_log"] else "partial_success"
-
-        except Exception as critical_pipeline_crash:
-            logger.critical(f"Fatal Orchestration Framework Core System Failure: {critical_pipeline_crash}")
-            report_payload["status"] = "fatal_crash"
-            report_payload["error_log"] = str(critical_pipeline_crash)
+        except Exception as tool_pipeline_err:
+            logger.error(f"Error handling orchestration verification pipeline : {str(tool_pipeline_err)}", exc_info = True)
+            report_payload["evidence"] = f"Pipeline execution break : {str(tool_pipeline_err)}"
 
         finally:
-            # Time difference calculation 
+            # Closes out the time calculation
             report_payload["execution_latency_seconds"] = round(time.perf_counter() - start_time, 4)
-            print(f"Orchestration Loop Execution Latency: {report_payload['execution_latency_seconds']} seconds")
+            print(f"Orchestration Loop Execution latency : {report_payload["execution_latency_seconds"]} seconds")
             return report_payload
 
